@@ -28,6 +28,7 @@ export default function ChatPage() {
 
     const [isLoading, setIsLoading] = useState(false);
     const [streamingContent, setStreamingContent] = useState("");
+    const [isSearching, setIsSearching] = useState(false);
     const [showBoard, setShowBoard] = useState(true);
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -79,9 +80,17 @@ export default function ChatPage() {
                     throw new Error(`HTTP ${response.status}`);
                 }
 
+                // Read stage metadata from headers and update immediately for UI responsiveness
+                const stageHeader = response.headers.get("X-Stage");
+                if (
+                    stageHeader &&
+                    stageHeader !== venture.stage
+                ) {
+                    setStage(stageHeader as "discovery" | "analysis" | "report_ready");
+                }
+
                 // Read extraction metadata from headers
                 const extractionHeader = response.headers.get("X-Extraction");
-                const stageHeader = response.headers.get("X-Stage");
 
                 if (extractionHeader) {
                     try {
@@ -112,8 +121,8 @@ export default function ChatPage() {
                         if (done) break;
 
                         const chunk = decoder.decode(value, { stream: true });
-                        // Parse the Vercel AI SDK data stream format
                         const lines = chunk.split("\n");
+
                         for (const line of lines) {
                             if (line.startsWith("0:")) {
                                 // Text token
@@ -124,6 +133,17 @@ export default function ChatPage() {
                                     updateLastAssistantMessage(fullContent);
                                 } catch {
                                     // skip malformed lines
+                                }
+                            } else if (line.startsWith("9:")) {
+                                // Custom Tool Call Token
+                                try {
+                                    const toolData = JSON.parse(line.slice(2));
+                                    if (toolData.tool === "internet_search" || toolData.tool === "web_search") {
+                                        setIsSearching(true);
+                                        // Optional: You could add a "Searching for X..." toast or indicator here
+                                    }
+                                } catch (e) {
+                                    console.error("Error parsing tool data:", e);
                                 }
                             }
                         }
@@ -143,6 +163,7 @@ export default function ChatPage() {
                 );
             } finally {
                 setIsLoading(false);
+                setIsSearching(false);
                 setStreamingContent("");
                 abortControllerRef.current = null;
             }
@@ -215,6 +236,7 @@ export default function ChatPage() {
                     <ChatPanel
                         messages={messages}
                         isLoading={isLoading}
+                        isSearching={isSearching}
                         streamingContent={streamingContent}
                     />
                     <ChatInput onSend={handleSendMessage} isLoading={isLoading} />

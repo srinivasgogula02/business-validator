@@ -211,7 +211,7 @@ Extract any new business facts from the user's latest message. Return only chang
             model: gateway("gpt-4o"), // This now maps to the active provider's quality model
             system: getConsultantPrompt(updatedKG, updatedStage),
             tools: {
-                web_search: openai.tools.webSearch({}),
+                internet_search: getSearchTool(),
             },
             messages: messages.map((m) => ({
                 role: m.role as "user" | "assistant",
@@ -233,9 +233,18 @@ Extract any new business facts from the user's latest message. Return only chang
             "X-Stage": updatedStage,
             "X-Completion": String(getCompletionPercentage(updatedKG)),
         };
-        if (extractedData) {
+
+        // Prepare extraction data for client update
+        let clientUpdates: Record<string, any> = extractedData || {};
+
+        // If we generated a report, include it in the updates
+        if (updatedKG.outputs.validation) {
+            clientUpdates.outputs = updatedKG.outputs;
+        }
+
+        if (Object.keys(clientUpdates).length > 0) {
             customHeaders["X-Extraction"] = encodeURIComponent(
-                JSON.stringify(extractedData)
+                JSON.stringify(clientUpdates)
             );
         }
 
@@ -244,8 +253,17 @@ Extract any new business facts from the user's latest message. Return only chang
             async start(controller) {
                 const encoder = new TextEncoder();
                 try {
-                    for await (const delta of result.textStream) {
-                        controller.enqueue(encoder.encode(`0:${JSON.stringify(delta)}\n`));
+                    for await (const part of result.fullStream) {
+                        if (part.type === 'text-delta') {
+                            const text = (part as any).textDelta ?? (part as any).text;
+                            if (text) {
+                                controller.enqueue(encoder.encode(`0:${JSON.stringify(text)}\n`));
+                            }
+                        } else if (part.type === 'tool-call') {
+                            const args = (part as any).args ?? (part as any).input;
+                            const toolInfo = { tool: part.toolName, query: args };
+                            controller.enqueue(encoder.encode(`9:${JSON.stringify(toolInfo)}\n`));
+                        }
                     }
                     controller.close();
                 } catch (error) {

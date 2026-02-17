@@ -180,15 +180,53 @@ export function useVentureStore() {
 
     const updateKnowledgeGraph = useCallback(
         async (updates: Partial<KnowledgeGraph>) => {
-            // This is usually handled by the server (Extractor), 
-            // but if we need manual updates:
-            // logic is complex to deep merge locally without lodash, 
-            // but we can rely on immediate optimistic merge or just wait for server?
-            // User prompt says "Extractor" updates it.
-            // Client-side `updateKnowledgeGraph` might be needed for manual edits if any.
-            // For now, we'll trust the Realtime subscription to update the state
-            // after the Server updates it.
-            // If we MUST update locally (e.g. manual edit), we call RPC or update query.
+            setVenture((prev) => {
+                const current = prev.knowledge_graph;
+                const nextKG = { ...current };
+
+                // Merge Core Inputs
+                if (updates.core_inputs) {
+                    nextKG.core_inputs = { ...nextKG.core_inputs, ...updates.core_inputs };
+                }
+
+                // Merge Refinements
+                if (updates.refinements) {
+                    nextKG.refinements = { ...nextKG.refinements, ...updates.refinements };
+                }
+
+                // Merge Validation Evidence
+                if (updates.validation_evidence) {
+                    nextKG.validation_evidence = { ...nextKG.validation_evidence, ...updates.validation_evidence };
+                }
+
+                // Merge Market Data
+                if (updates.market_data) {
+                    nextKG.market_data = { ...nextKG.market_data };
+                    if (updates.market_data.tam) nextKG.market_data.tam = updates.market_data.tam;
+                    if (updates.market_data.sam) nextKG.market_data.sam = updates.market_data.sam;
+                    if (updates.market_data.som) nextKG.market_data.som = updates.market_data.som;
+
+                    if (updates.market_data.competitors && updates.market_data.competitors.length > 0) {
+                        const existingNames = new Set(nextKG.market_data.competitors.map(c => c.name.toLowerCase()));
+                        const newCompetitors = updates.market_data.competitors.filter(c => !existingNames.has(c.name.toLowerCase()));
+                        nextKG.market_data.competitors = [...nextKG.market_data.competitors, ...newCompetitors];
+                    }
+                }
+
+                // Merge Red Flags
+                if (updates.red_flags && updates.red_flags.length > 0) {
+                    const existingKeys = new Set(nextKG.red_flags.map((f) => `${f.type}:${f.message}`));
+                    const newFlags = updates.red_flags.filter((f) => !existingKeys.has(`${f.type}:${f.message}`));
+                    nextKG.red_flags = [...nextKG.red_flags, ...newFlags];
+                }
+
+                // Merge Outputs
+                if (updates.outputs) {
+                    nextKG.outputs = { ...nextKG.outputs, ...updates.outputs };
+                }
+
+                return { ...prev, knowledge_graph: nextKG };
+            });
         },
         []
     );

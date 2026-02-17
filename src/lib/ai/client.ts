@@ -18,22 +18,8 @@ export const gateway = (modelId: string): string => {
     return getModel("quality");
 };
 
-import { tool } from "ai";
-import { z } from "zod";
+import { openai } from "@ai-sdk/openai";
 
 export const getSearchTool = () => {
-    // Placeholder for web search. 
-    // Ideally, this would use a search provider like Tavily or Exa, 
-    // or Vercel AI Gateway's tools if available.
-    // Vercel AI Gateway's tools if available.
-    const params = z.object({ query: z.string() });
-    return tool({
-        description: "Search the web for real-time information. Use this when the user asks for current events or specific data not in your knowledge base.",
-        parameters: params,
-        execute: (async ({ query }: any) => {
-            // Check if we can use Vercel's search (if it were working)
-            // For now, return a message to the model so it knows search failed gracefully.
-            return `[Search functionality is currently disabled. Please ignore this or ask the user to provide the information directly.]`;
-        }) as any,
-    });
+    return openai.tools.webSearch({});
 };

@@ -4,19 +4,23 @@ import { useRef, useEffect } from "react";
 import { Message } from "@/types/database";
 import { Brain, User } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 
 interface ChatPanelProps {
     messages: Message[];
     isLoading: boolean;
+    isSearching?: boolean;
     streamingContent: string;
 }
 
-export function ChatPanel({ messages, isLoading }: ChatPanelProps) {
+export function ChatPanel({ messages, isLoading, isSearching, streamingContent }: ChatPanelProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, isLoading]);
+    }, [messages, isLoading, isSearching, streamingContent]);
 
     return (
         <ScrollArea className="flex-1 w-full min-h-0 px-4 py-6">
@@ -41,9 +45,13 @@ export function ChatPanel({ messages, isLoading }: ChatPanelProps) {
                                 }`}
                         >
                             {message.role === "assistant" ? (
-                                <FormattedMessage content={message.content} />
+                                <div className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:bg-gray-800 prose-pre:text-gray-100">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {message.content}
+                                    </ReactMarkdown>
+                                </div>
                             ) : (
-                                message.content
+                                <div className="whitespace-pre-wrap">{message.content}</div>
                             )}
                         </div>
 
@@ -55,18 +63,22 @@ export function ChatPanel({ messages, isLoading }: ChatPanelProps) {
                     </div>
                 ))}
 
-                {/* Typing indicator */}
-                {isLoading && messages[messages.length - 1]?.content === "" && (
-                    <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#03334c] flex items-center justify-center shrink-0">
-                            <Brain className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="bg-[#f5f7fa] rounded-2xl rounded-tl-md px-4 py-3 border border-[#03334c]/5">
-                            <div className="flex gap-1.5 items-center h-5">
-                                <div className="w-2 h-2 rounded-full bg-[#03334c]/40 typing-dot" />
-                                <div className="w-2 h-2 rounded-full bg-[#03334c]/40 typing-dot" />
-                                <div className="w-2 h-2 rounded-full bg-[#03334c]/40 typing-dot" />
-                            </div>
+                {/* Loading / Searching Indicator */}
+                {(isLoading || isSearching) && (
+                    <div className="flex justify-start animate-in fade-in zoom-in-95 duration-300">
+                        <div className="bg-white border border-[#03334c]/10 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-3">
+                            {isSearching ? (
+                                <>
+                                    <div className="w-4 h-4 rounded-full border-2 border-[#03334c] border-t-transparent animate-spin" />
+                                    <span className="text-sm text-[#5a6b7f]">Searching the web...</span>
+                                </>
+                            ) : (
+                                <div className="flex gap-1.5 py-1">
+                                    <div className="w-1.5 h-1.5 bg-[#03334c]/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                    <div className="w-1.5 h-1.5 bg-[#03334c]/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                    <div className="w-1.5 h-1.5 bg-[#03334c]/40 rounded-full animate-bounce" />
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -74,34 +86,5 @@ export function ChatPanel({ messages, isLoading }: ChatPanelProps) {
                 <div ref={bottomRef} />
             </div>
         </ScrollArea>
-    );
-}
-
-// ─── Simple formatted message (handles bold, newlines) ──────────
-function FormattedMessage({ content }: { content: string }) {
-    if (!content) return null;
-
-    const parts = content.split(/(\*\*.*?\*\*)/g);
-
-    return (
-        <span>
-            {parts.map((part, i) => {
-                if (part.startsWith("**") && part.endsWith("**")) {
-                    return (
-                        <strong key={i} className="font-semibold">
-                            {part.slice(2, -2)}
-                        </strong>
-                    );
-                }
-                // Handle newlines
-                const lines = part.split("\n");
-                return lines.map((line, j) => (
-                    <span key={`${i}-${j}`}>
-                        {line}
-                        {j < lines.length - 1 && <br />}
-                    </span>
-                ));
-            })}
-        </span>
     );
 }

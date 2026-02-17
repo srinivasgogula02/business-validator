@@ -19,6 +19,8 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { MarketCard } from "./MarketCard";
 
+import { ReportView } from "./ReportView";
+
 interface VentureBoardProps {
     venture: Venture;
 }
@@ -27,6 +29,29 @@ export function VentureBoard({ venture }: VentureBoardProps) {
     const kg = venture.knowledge_graph;
     const completion = getCompletionPercentage(kg);
 
+    // If report is ready and outputs are available, show the report view
+    if (venture.stage === "report_ready" && kg.outputs?.validation) {
+        return (
+            <div className="p-5 space-y-6">
+                {/* ─── Phase & Progress Header (Reused) ──────────────── */}
+                <div>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-[#03334c] flex items-center gap-1.5">
+                            <TrendingUp className="w-4 h-4" />
+                            Venture Report
+                        </h3>
+                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold">
+                            📊 Report Ready
+                        </Badge>
+                    </div>
+                </div>
+
+                <ReportView outputs={kg.outputs} />
+            </div>
+        );
+    }
+
+    // Default Discovery/Analysis View
     const coreFields = [
         {
             key: "context_type",
