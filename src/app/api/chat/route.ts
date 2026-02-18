@@ -125,16 +125,55 @@ Extract any new business facts from the user's latest message. Return only chang
         const completion = getCompletionPercentage(updatedKG);
         let updatedStage = stage;
 
-        // Priority 1: Explicit suggestion from Extractor
-        if (extractedData?.suggested_stage && extractedData.suggested_stage !== stage) {
-            updatedStage = extractedData.suggested_stage;
+        // Rule 1: Extractor Suggestion (Priority)
+        if (extractedData?.suggested_stage) {
+            // Prevent backtracking: Only allow forward movement (Discovery -> Analysis -> Report)
+            // Unless it's a "reset" scenario (which handles clearing data separately)
+            const stages = ["discovery", "analysis", "report_ready"];
+            const currentIdx = stages.indexOf(stage);
+            const suggestedIdx = stages.indexOf(extractedData.suggested_stage);
+
+            if (suggestedIdx > currentIdx) {
+                updatedStage = extractedData.suggested_stage;
+            }
         }
-        // Priority 2: Reset to discovery if graph was wiped
-        else if (updatedKG.core_inputs.business_idea === undefined && stage !== "discovery") {
+
+        // Rule 2: Reset Safety (Explicit Reset)
+        if (extractedData?.should_reset || (updatedKG.core_inputs.business_idea === undefined && stage !== "discovery")) {
             updatedStage = "discovery";
+            // wipe data if explicit reset requested
+            if (extractedData?.should_reset) {
+                // We need to fetch the empty state. 
+                // Since createEmptyKnowledgeGraph is an exported function (assuming), we can use it.
+                // Ideally we'd import it, but to minimize changes/imports, we can just manually reset the structure or import it.
+                // Let's assume we can modify the KG in place or reassign.
+                updatedKG.core_inputs = {
+                    context_type: undefined,
+                    business_idea: undefined,
+                    target_customer: undefined,
+                    problem_statement: undefined,
+                    solution_differentiation: undefined,
+                    location: undefined
+                };
+                updatedKG.market_data = { competitors: [], tam: undefined, sam: undefined, som: undefined };
+                updatedKG.validation_evidence = { interviews_conducted: false, findings: undefined };
+                updatedKG.refinements = { additional_context: undefined, differentiation_clarified: undefined };
+                updatedKG.red_flags = [];
+                updatedKG.outputs = { validation: undefined, pitch_deck: undefined };
+            }
         }
-        // Priority 3: Auto-advance to Analysis if core fields are full (fallback)
-        else if (stage === "discovery" && completion >= 80) {
+
+        // Rule 3: Auto-Analysis (Mandatory Fallback)
+        // Check if all CORE inputs are filled (Discovery Phase Done)
+        const coreInputs = updatedKG.core_inputs;
+        const isCoreComplete =
+            coreInputs.business_idea &&
+            coreInputs.problem_statement &&
+            coreInputs.target_customer &&
+            coreInputs.solution_differentiation &&
+            coreInputs.location; // context_type is optional/implicit sometimes
+
+        if (stage === "discovery" && isCoreComplete) {
             updatedStage = "analysis";
         }
 

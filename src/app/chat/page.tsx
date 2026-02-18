@@ -13,6 +13,7 @@ import {
     PanelRightClose,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import Link from "next/link";
 
 export default function ChatPage() {
@@ -210,6 +211,8 @@ export default function ChatPage() {
                         </span>
                         <span className="text-xs text-[#5a6b7f]">• {completion}%</span>
                     </div>
+
+                    <LogoutButton />
 
                     <Button
                         variant="ghost"

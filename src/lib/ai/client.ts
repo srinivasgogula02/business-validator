@@ -1,7 +1,7 @@
 // Ensure we have the Vercel AI Gateway key available in the environment
 // The AI SDK automatically looks for AI_GATEWAY_API_KEY for 'openai/*' models if configured on Vercel
-if (!process.env.AI_GATEWAY_API_KEY && process.env.VERCEL_API_KEY) {
-    process.env.AI_GATEWAY_API_KEY = process.env.VERCEL_API_KEY;
+if (!process.env.AI_GATEWAY_API_KEY && process.env.VERCEL_AI_API_KEY) {
+    process.env.AI_GATEWAY_API_KEY = process.env.VERCEL_AI_API_KEY;
 }
 
 // Model mapping using string identifiers, matching the 'vercel ai/demo' pattern

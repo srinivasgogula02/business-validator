@@ -137,8 +137,10 @@ export function createEmptyKnowledgeGraph(): KnowledgeGraph {
 }
 
 // ─── Knowledge Graph Completion % ────────────────────────────────
+// ─── Knowledge Graph Completion % ────────────────────────────────
 export function getCompletionPercentage(kg: KnowledgeGraph): number {
-    const fields = [
+    // Phase 1: Core Inputs (60% weight)
+    const coreFields = [
         kg.core_inputs.context_type,
         kg.core_inputs.business_idea,
         kg.core_inputs.target_customer,
@@ -146,6 +148,19 @@ export function getCompletionPercentage(kg: KnowledgeGraph): number {
         kg.core_inputs.solution_differentiation,
         kg.core_inputs.location,
     ];
-    const filled = fields.filter(Boolean).length;
-    return Math.round((filled / fields.length) * 100);
+    const coreFilled = coreFields.filter(Boolean).length;
+    const coreScore = (coreFilled / coreFields.length) * 60;
+
+    // Phase 2: Analysis & Validation (40% weight)
+    // We check for depth: Competitors, specific validation checks, or red flags discussed
+    const analysisFields = [
+        kg.market_data?.competitors?.length > 0, // Competitors found
+        kg.validation_evidence?.interviews_conducted || kg.validation_evidence?.findings, // Validation started
+        kg.market_data?.tam || kg.market_data?.sam, // Market size discussed
+        kg.refinements?.additional_context || kg.refinements?.differentiation_clarified // Refined during analysis
+    ];
+    const analysisFilled = analysisFields.filter(Boolean).length;
+    const analysisScore = (analysisFilled / analysisFields.length) * 40;
+
+    return Math.round(coreScore + analysisScore);
 }

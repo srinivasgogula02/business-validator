@@ -30,25 +30,36 @@ export function VentureBoard({ venture }: VentureBoardProps) {
     const completion = getCompletionPercentage(kg);
 
     // If report is ready and outputs are available, show the report view
-    if (venture.stage === "report_ready" && kg.outputs?.validation) {
-        return (
-            <div className="p-5 space-y-6">
-                {/* ─── Phase & Progress Header (Reused) ──────────────── */}
-                <div>
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-[#03334c] flex items-center gap-1.5">
-                            <TrendingUp className="w-4 h-4" />
-                            Venture Report
-                        </h3>
-                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold">
-                            📊 Report Ready
-                        </Badge>
+    if (venture.stage === "report_ready") {
+        if (kg.outputs?.validation) {
+            return (
+                <div className="p-5 space-y-6">
+                    {/* ─── Phase & Progress Header (Reused) ──────────────── */}
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-[#03334c] flex items-center gap-1.5">
+                                <TrendingUp className="w-4 h-4" />
+                                Venture Report
+                            </h3>
+                            <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold">
+                                📊 Report Ready
+                            </Badge>
+                        </div>
                     </div>
-                </div>
 
-                <ReportView outputs={kg.outputs} />
-            </div>
-        );
+                    <ReportView outputs={kg.outputs} />
+                </div>
+            );
+        } else {
+            // Generating state
+            return (
+                <div className="p-5 space-y-6 flex flex-col items-center justify-center min-h-[400px]">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#03334c]"></div>
+                    <p className="text-[#03334c] font-medium mt-4">Generating your Venture Report...</p>
+                    <p className="text-sm text-gray-500">Analyzing unit economics, risks, and market data.</p>
+                </div>
+            );
+        }
     }
 
     // Default Discovery/Analysis View
