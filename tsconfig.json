@@ -38,7 +38,6 @@
   ],
   "exclude": [
     "node_modules",
-    "gateway.ts",
-    "web-search-chat.ts"
+    "scripts"
   ]
 }
