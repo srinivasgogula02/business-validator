@@ -16,7 +16,9 @@ import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import Link from "next/link";
 
-export default function ChatPage() {
+import { Suspense } from "react";
+
+function ChatContent() {
     const {
         venture,
         messages,
@@ -271,5 +273,13 @@ export default function ChatPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function ChatPage() {
+    return (
+        <Suspense fallback={<div className="h-screen w-full flex items-center justify-center text-[#03334c]">Loading chat...</div>}>
+            <ChatContent />
+        </Suspense>
     );
 }
