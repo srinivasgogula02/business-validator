@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { otpRateLimit } from '@/lib/rate-limit';
+import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
     try {
+        const ip = req.headers.get('x-forwarded-for') || 'unknown';
+        if (!otpRateLimit.check(ip)) {
+            return NextResponse.json({ success: false, message: 'Too many requests. Please try again later.' }, { status: 429 });
+        }
+
         const { mobile, otp } = await req.json();
 
         if (!mobile || !otp) {
@@ -29,8 +36,10 @@ export async function POST(req: NextRequest) {
         // 2. Shadow Account Logic
         const supabase = await createClient();
         const shadowEmail = `${mobile}@mobile.oneasy.com`;
-        // Use a consistent secret strategy.
-        const shadowPassword = `ComplexSecret#${mobile}`;
+
+        // Securely hash the shadow password using the backend secret
+        const secret = process.env.SUPABASE_SHADOW_SECRET || 'fallback_insecure_secret_deploy_soon';
+        const shadowPassword = crypto.createHmac('sha256', secret).update(mobile).digest('hex');
 
         // Attempt Sign In
         let { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({

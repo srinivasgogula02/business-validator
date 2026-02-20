@@ -4,7 +4,9 @@ import { z } from "zod";
 import { getExtractorPrompt, getConsultantPrompt } from "@/lib/ai/prompts";
 import { KnowledgeGraph, getCompletionPercentage } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
-import { openai } from "@ai-sdk/openai";
+
+export const maxDuration = 60;
+export const runtime = 'edge';
 
 // ─── Extraction Schema ──────────────────────────────────────────
 const extractionSchema = z.object({
@@ -65,13 +67,29 @@ const extractionSchema = z.object({
             })
         )
         .nullable(),
-    suggested_stage: z.enum(["discovery", "analysis", "report_ready"]).nullable(),
+    review_status: z
+        .object({
+            problem_statement_approved: z.boolean().nullable(),
+            competitor_analysis_approved: z.boolean().nullable(),
+            idea_validation_approved: z.boolean().nullable(),
+            gtm_strategy_approved: z.boolean().nullable(),
+        })
+        .nullable(),
+    suggested_stage: z.enum(["discovery", "review_problem", "review_competitor", "review_validation", "review_gtm", "report_ready"]).nullable(),
     should_reset: z.boolean().nullable(),
 });
 
 // ─── POST Handler ───────────────────────────────────────────────
 export async function POST(req: Request) {
     try {
+        const supabase = await createClient();
+
+        // ─── Authentication Check ──────────────────────────────────────
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            return new Response("Unauthorized Session", { status: 401 });
+        }
+
         const {
             messages,
             knowledgeGraph,
@@ -83,8 +101,6 @@ export async function POST(req: Request) {
             stage: string;
             ventureId: string;
         } = await req.json();
-
-        const supabase = await createClient();
 
         const lastUserMessage = messages[messages.length - 1];
         if (!lastUserMessage || lastUserMessage.role !== "user") {
@@ -127,9 +143,8 @@ Extract any new business facts from the user's latest message. Return only chang
 
         // Rule 1: Extractor Suggestion (Priority)
         if (extractedData?.suggested_stage) {
-            // Prevent backtracking: Only allow forward movement (Discovery -> Analysis -> Report)
-            // Unless it's a "reset" scenario (which handles clearing data separately)
-            const stages = ["discovery", "analysis", "report_ready"];
+            // Prevent backtracking: Only allow forward movement
+            const stages = ["discovery", "review_problem", "review_competitor", "review_validation", "review_gtm", "report_ready"];
             const currentIdx = stages.indexOf(stage);
             const suggestedIdx = stages.indexOf(extractedData.suggested_stage);
 
@@ -160,25 +175,77 @@ Extract any new business facts from the user's latest message. Return only chang
                 updatedKG.refinements = { additional_context: undefined, differentiation_clarified: undefined };
                 updatedKG.red_flags = [];
                 updatedKG.outputs = { validation: undefined, pitch_deck: undefined };
+                updatedKG.review_status = {
+                    problem_statement_approved: false,
+                    competitor_analysis_approved: false,
+                    idea_validation_approved: false,
+                    gtm_strategy_approved: false,
+                };
             }
         }
 
-        // Rule 3: Auto-Analysis (Mandatory Fallback)
-        // Check if all CORE inputs are filled (Discovery Phase Done)
-        const coreInputs = updatedKG.core_inputs;
-        const isCoreComplete =
-            coreInputs.business_idea &&
-            coreInputs.problem_statement &&
-            coreInputs.target_customer &&
-            coreInputs.solution_differentiation &&
-            coreInputs.location; // context_type is optional/implicit sometimes
+        // Rule 3: Auto-Analysis & Progression
+        if (stage === "discovery") {
+            const coreInputs = updatedKG.core_inputs;
+            const isCoreComplete =
+                coreInputs.business_idea &&
+                coreInputs.problem_statement &&
+                coreInputs.target_customer &&
+                coreInputs.location;
 
-        if (stage === "discovery" && isCoreComplete) {
-            updatedStage = "analysis";
+            if (isCoreComplete && (!updatedKG.outputs?.problem_statement)) {
+                // Generate the 4 aspects immediately
+                try {
+                    const aspectSchema = z.object({
+                        problem_statement: z.string(),
+                        competitor_analysis: z.string(),
+                        idea_validation: z.string(),
+                        gtm_strategy: z.string()
+                    });
+
+                    const aspectGen = await generateObject({
+                        model: gateway("gpt-4o"),
+                        schema: aspectSchema,
+                        prompt: `You are a Senior Venture Capital Analyst and Startup Consultant. Based on the user's core inputs, generate comprehensive analysis for 4 key areas: Problem Statement, Competitor Analysis, Idea Validation, and GTM Strategy.
+                        
+                        CORE INPUTS:
+                        Idea: ${coreInputs.business_idea}
+                        Customer: ${coreInputs.target_customer}
+                        Problem: ${coreInputs.problem_statement}
+                        Location: ${coreInputs.location}
+                        
+                        Provide detailed, realistic, and actionable content for each aspect. Return as plain text descriptions.`
+                    });
+
+                    updatedKG.outputs = {
+                        ...updatedKG.outputs,
+                        problem_statement: aspectGen.object.problem_statement,
+                        competitor_analysis: aspectGen.object.competitor_analysis,
+                        idea_validation: aspectGen.object.idea_validation,
+                        gtm_strategy: aspectGen.object.gtm_strategy
+                    };
+                    updatedStage = "review_problem";
+                } catch (e) {
+                    console.error("Aspect generation failed:", e);
+                }
+            }
+        }
+
+        // Auto progression for reviews
+        if (updatedStage === stage) {
+            if (stage === "review_problem" && updatedKG.review_status?.problem_statement_approved) {
+                updatedStage = "review_competitor";
+            } else if (stage === "review_competitor" && updatedKG.review_status?.competitor_analysis_approved) {
+                updatedStage = "review_validation";
+            } else if (stage === "review_validation" && updatedKG.review_status?.idea_validation_approved) {
+                updatedStage = "review_gtm";
+            } else if (stage === "review_gtm" && updatedKG.review_status?.gtm_strategy_approved) {
+                updatedStage = "report_ready";
+            }
         }
 
         // ── Phase 3: Report Generation (Triggered on transition) ─
-        if (updatedStage === "report_ready" && stage !== "report_ready") {
+        if (updatedStage === "report_ready" && stage !== "report_ready" && !updatedKG.outputs.validation) {
             const reportSchema = z.object({
                 validation: z.object({
                     score: z.number().min(0).max(100),
@@ -276,9 +343,13 @@ Extract any new business facts from the user's latest message. Return only chang
         // Prepare extraction data for client update
         let clientUpdates: Record<string, any> = extractedData || {};
 
-        // If we generated a report, include it in the updates
-        if (updatedKG.outputs.validation) {
+        // Always push outputs and review_status if they exist so frontend stays in sync
+        if (updatedKG.outputs && Object.keys(updatedKG.outputs).length > 0) {
             clientUpdates.outputs = updatedKG.outputs;
+        }
+
+        if (updatedKG.review_status) {
+            clientUpdates.review_status = updatedKG.review_status;
         }
 
         if (Object.keys(clientUpdates).length > 0) {
@@ -399,6 +470,15 @@ function mergeExtraction(
         result.red_flags = [...result.red_flags, ...newFlags];
     }
 
+    if (extracted.review_status) {
+        result.review_status = { ...result.review_status };
+        Object.entries(extracted.review_status).forEach(([key, value]) => {
+            if (value !== null && value !== undefined) {
+                (result.review_status as unknown as Record<string, unknown>)[key] = value;
+            }
+        });
+    }
+
     if (extracted.should_reset) {
         // Reset to empty graph but keep structure
         return {
@@ -408,6 +488,12 @@ function mergeExtraction(
             market_data: { competitors: [] },
             red_flags: [],
             outputs: {},
+            review_status: {
+                problem_statement_approved: false,
+                competitor_analysis_approved: false,
+                idea_validation_approved: false,
+                gtm_strategy_approved: false,
+            },
         } as KnowledgeGraph;
     }
 

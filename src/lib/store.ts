@@ -225,6 +225,11 @@ export function useVentureStore() {
                     nextKG.outputs = { ...nextKG.outputs, ...updates.outputs };
                 }
 
+                // Merge Review Status
+                if (updates.review_status) {
+                    nextKG.review_status = { ...nextKG.review_status, ...updates.review_status };
+                }
+
                 return { ...prev, knowledge_graph: nextKG };
             });
         },

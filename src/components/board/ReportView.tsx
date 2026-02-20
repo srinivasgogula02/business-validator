@@ -7,9 +7,20 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, AlertTriangle, FileText, Presentation } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CheckCircle2, XCircle, AlertTriangle, FileText, Presentation, ChevronRight } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ReportViewProps {
     outputs: OutputData;
@@ -78,61 +89,104 @@ export function ReportView({ outputs }: ReportViewProps) {
                 </CardContent>
             </Card>
 
-            {/* ─── Tabs: Analysis & Pitch Deck ─────────────────── */}
-            <Tabs defaultValue="analysis" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="analysis">
-                        <FileText className="w-4 h-4 mr-2" />
-                        Analysis
-                    </TabsTrigger>
-                    <TabsTrigger value="pitch">
-                        <Presentation className="w-4 h-4 mr-2" />
-                        Pitch Deck
-                    </TabsTrigger>
-                </TabsList>
+            {/* ─── Documents Buttons ─────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
 
-                {/* ─── Analysis Tab ────────────────────────────── */}
-                <TabsContent value="analysis" className="space-y-4 mt-4">
-                    <Section
-                        title="Strengths"
-                        items={validation.strengths}
-                        icon={CheckCircle2}
-                        color="text-emerald-600"
-                    />
-                    <Section
-                        title="Weaknesses"
-                        items={validation.weaknesses}
-                        icon={XCircle}
-                        color="text-red-500"
-                    />
-                    <Section
-                        title="Risks"
-                        items={validation.risks}
-                        icon={AlertTriangle}
-                        color="text-amber-500"
-                    />
-                    <Section
-                        title="Strategic Recommendations"
-                        items={validation.recommendations}
-                        icon={FileText}
-                        color="text-blue-600"
-                    />
-                </TabsContent>
-
-                {/* ─── Pitch Deck Tab ──────────────────────────── */}
-                <TabsContent value="pitch" className="space-y-4 mt-4">
-                    {pitch_deck && (
-                        <div className="space-y-4">
-                            <Slide cardTitle="1. Problem" slide={pitch_deck.problem_slide} />
-                            <Slide cardTitle="2. Solution" slide={pitch_deck.solution_slide} />
-                            <Slide cardTitle="3. Market" slide={pitch_deck.market_slide} />
-                            <Slide cardTitle="4. Why Now" slide={pitch_deck.why_now_slide} />
-                            <Slide cardTitle="5. Competition" slide={pitch_deck.competition_slide} />
-                            <Slide cardTitle="6. Target Customer" slide={pitch_deck.target_customer_slide} />
+                {/* Strategic Execution Plan Dialog */}
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className="h-auto p-4 flex flex-col items-start gap-2 bg-white hover:bg-slate-50 border-[#03334c]/10 text-left transition-all whitespace-normal"
+                        >
+                            <div className="flex items-center gap-2 w-full">
+                                <FileText className="w-5 h-5 shrink-0 text-[#03334c]" />
+                                <span className="font-bold text-[#03334c] flex-1 text-base leading-tight">Strategic Execution Plan</span>
+                                <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" />
+                            </div>
+                            <span className="text-xs text-gray-500 font-normal leading-relaxed">
+                                View generated problem, competitor analysis, validation, and GTM strategy.
+                            </span>
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl lg:max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+                        <DialogHeader className="p-6 pb-4 border-b border-[#03334c]/5 bg-slate-50/50 shrink-0">
+                            <DialogTitle className="flex items-center gap-2 text-[#03334c]">
+                                <FileText className="w-5 h-5" />
+                                Strategic Execution Plan
+                            </DialogTitle>
+                            <DialogDescription>
+                                A comprehensive look into your business aspects, generated from the discovery phase.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="prose prose-sm md:prose-base max-w-none text-gray-700 prose-headings:text-[#03334c] prose-headings:font-bold prose-h3:text-lg prose-h3:mt-8 prose-h3:mb-3 prose-p:leading-relaxed prose-li:marker:text-gray-400">
+                                {outputs.problem_statement && <ReactMarkdown remarkPlugins={[remarkGfm]}>{outputs.problem_statement}</ReactMarkdown>}
+                                {outputs.competitor_analysis && (
+                                    <>
+                                        <hr className="my-8 border-gray-100" />
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{outputs.competitor_analysis}</ReactMarkdown>
+                                    </>
+                                )}
+                                {outputs.idea_validation && (
+                                    <>
+                                        <hr className="my-8 border-gray-100" />
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{outputs.idea_validation}</ReactMarkdown>
+                                    </>
+                                )}
+                                {outputs.gtm_strategy && (
+                                    <>
+                                        <hr className="my-8 border-gray-100" />
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{outputs.gtm_strategy}</ReactMarkdown>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    )}
-                </TabsContent>
-            </Tabs>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Pitch Deck Outline Dialog */}
+                {pitch_deck && (
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className="h-auto p-4 flex flex-col items-start gap-2 bg-white hover:bg-slate-50 border-[#03334c]/10 text-left transition-all whitespace-normal"
+                            >
+                                <div className="flex items-center gap-2 w-full">
+                                    <Presentation className="w-5 h-5 shrink-0 text-[#03334c]" />
+                                    <span className="font-bold text-[#03334c] flex-1 text-base leading-tight">Pitch Deck Outline</span>
+                                    <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" />
+                                </div>
+                                <span className="text-xs text-gray-500 font-normal leading-relaxed">
+                                    Key slides and bullet points to present your vision to investors.
+                                </span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl lg:max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+                            <DialogHeader className="p-6 pb-4 border-b border-[#03334c]/5 bg-slate-50/50 shrink-0">
+                                <DialogTitle className="flex items-center gap-2 text-[#03334c]">
+                                    <Presentation className="w-5 h-5" />
+                                    Pitch Deck Outline
+                                </DialogTitle>
+                                <DialogDescription>
+                                    6 essential slides constructed from your venture data.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Slide cardTitle="1. Problem" slide={pitch_deck.problem_slide} />
+                                    <Slide cardTitle="2. Solution" slide={pitch_deck.solution_slide} />
+                                    <Slide cardTitle="3. Market" slide={pitch_deck.market_slide} />
+                                    <Slide cardTitle="4. Why Now" slide={pitch_deck.why_now_slide} />
+                                    <Slide cardTitle="5. Competition" slide={pitch_deck.competition_slide} />
+                                    <Slide cardTitle="6. Target Customer" slide={pitch_deck.target_customer_slide} />
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                )}
+            </div>
         </div>
     );
 }

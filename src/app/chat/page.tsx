@@ -89,7 +89,7 @@ function ChatContent() {
                     stageHeader &&
                     stageHeader !== venture.stage
                 ) {
-                    setStage(stageHeader as "discovery" | "analysis" | "report_ready");
+                    setStage(stageHeader as any);
                 }
 
                 // Read extraction metadata from headers
@@ -110,7 +110,7 @@ function ChatContent() {
                     stageHeader &&
                     stageHeader !== venture.stage
                 ) {
-                    setStage(stageHeader as "discovery" | "analysis" | "report_ready");
+                    setStage(stageHeader as any);
                 }
 
                 // Stream the response
@@ -203,9 +203,9 @@ function ChatContent() {
                         <div
                             className={`w-2 h-2 rounded-full ${venture.stage === "discovery"
                                 ? "bg-blue-500"
-                                : venture.stage === "analysis"
-                                    ? "bg-amber-500"
-                                    : "bg-emerald-500"
+                                : venture.stage === "report_ready"
+                                    ? "bg-emerald-500"
+                                    : "bg-amber-500"
                                 }`}
                         />
                         <span className="text-xs font-medium text-[#03334c] capitalize">

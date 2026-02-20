@@ -65,14 +65,6 @@ export function VentureBoard({ venture }: VentureBoardProps) {
     // Default Discovery/Analysis View
     const coreFields = [
         {
-            key: "context_type",
-            label: "Context",
-            icon: ClipboardCheck,
-            value: kg.core_inputs.context_type
-                ?.replace(/_/g, " ")
-                .replace(/\b\w/g, (c) => c.toUpperCase()),
-        },
-        {
             key: "business_idea",
             label: "Business Idea",
             icon: Lightbulb,
@@ -91,14 +83,8 @@ export function VentureBoard({ venture }: VentureBoardProps) {
             value: kg.core_inputs.problem_statement,
         },
         {
-            key: "solution_differentiation",
-            label: "Differentiator",
-            icon: Zap,
-            value: kg.core_inputs.solution_differentiation,
-        },
-        {
             key: "location",
-            label: "Location",
+            label: "Target Market",
             icon: MapPin,
             value: kg.core_inputs.location,
         },
@@ -119,16 +105,12 @@ export function VentureBoard({ venture }: VentureBoardProps) {
                         variant="secondary"
                         className={`text-[10px] font-semibold ${venture.stage === "discovery"
                             ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : venture.stage === "analysis"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
                             }`}
                     >
                         {venture.stage === "discovery"
                             ? "🔍 Discovery"
-                            : venture.stage === "analysis"
-                                ? "🔬 Analysis"
-                                : "📊 Report Ready"}
+                            : "👀 Reviewing Aspects"}
                     </Badge>
                 </div>
 
@@ -184,6 +166,32 @@ export function VentureBoard({ venture }: VentureBoardProps) {
                     ))}
                 </div>
             </div>
+
+            {/* ─── Generated Aspects in Review ─────────────────── */}
+            {(kg.outputs?.problem_statement || kg.outputs?.competitor_analysis || kg.outputs?.idea_validation || kg.outputs?.gtm_strategy) && (
+                <>
+                    <Separator className="bg-[#03334c]/5" />
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-semibold text-[#03334c] uppercase tracking-wider">
+                            Generated Aspects
+                        </h4>
+                        <div className="space-y-2">
+                            {kg.outputs?.problem_statement && (
+                                <InfoCard icon={Target} label="Problem Statement" value={kg.outputs.problem_statement} />
+                            )}
+                            {kg.outputs?.competitor_analysis && (
+                                <InfoCard icon={Users} label="Competitor Analysis" value={kg.outputs.competitor_analysis} />
+                            )}
+                            {kg.outputs?.idea_validation && (
+                                <InfoCard icon={CheckCircle2} label="Idea Validation" value={kg.outputs.idea_validation} />
+                            )}
+                            {kg.outputs?.gtm_strategy && (
+                                <InfoCard icon={TrendingUp} label="GTM Strategy" value={kg.outputs.gtm_strategy} />
+                            )}
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* ─── Refinements ─────────────────────────────────── */}
             {(kg.refinements.target_narrowed ||
@@ -350,19 +358,14 @@ export function VentureBoard({ venture }: VentureBoardProps) {
                 </h4>
                 <div className="space-y-0">
                     {[
-                        {
-                            label: "Discovery",
-                            stage: "discovery",
-                            desc: "Core questions",
-                        },
-                        { label: "Analysis", stage: "analysis", desc: "Deep dive" },
-                        {
-                            label: "Reports",
-                            stage: "report_ready",
-                            desc: "5 expert reports",
-                        },
+                        { label: "Discovery", stage: "discovery", desc: "Core questions" },
+                        { label: "Problem", stage: "review_problem", desc: "Statement" },
+                        { label: "Competitors", stage: "review_competitor", desc: "Analysis" },
+                        { label: "Validation", stage: "review_validation", desc: "Ideas" },
+                        { label: "GTM", stage: "review_gtm", desc: "Strategy" },
+                        { label: "Reports", stage: "report_ready", desc: "Final Polish" },
                     ].map((step, i) => {
-                        const stageOrder = ["discovery", "analysis", "report_ready"];
+                        const stageOrder = ["discovery", "review_problem", "review_competitor", "review_validation", "review_gtm", "report_ready"];
                         const currentIdx = stageOrder.indexOf(venture.stage);
                         const stepIdx = stageOrder.indexOf(step.stage);
                         const isComplete = stepIdx < currentIdx;
@@ -385,7 +388,7 @@ export function VentureBoard({ venture }: VentureBoardProps) {
                                             i + 1
                                         )}
                                     </div>
-                                    {i < 2 && (
+                                    {i < 5 && (
                                         <div
                                             className={`w-0.5 h-8 ${isComplete ? "bg-emerald-500" : "bg-[#e2e8f0]"
                                                 }`}

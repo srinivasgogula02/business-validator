@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { otpRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
     try {
+        const ip = req.headers.get('x-forwarded-for') || 'unknown';
+        if (!otpRateLimit.check(ip)) {
+            return NextResponse.json({ success: false, message: 'Too many requests. Please try again later.' }, { status: 429 });
+        }
+
         const { mobile } = await req.json();
 
         // 1. Validation

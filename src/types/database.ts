@@ -1,5 +1,5 @@
 // ─── Venture Stage ────────────────────────────────────────────────
-export type VentureStage = "discovery" | "analysis" | "report_ready";
+export type VentureStage = "discovery" | "review_problem" | "review_competitor" | "review_validation" | "review_gtm" | "report_ready";
 
 // ─── Knowledge Graph (JSONB) ─────────────────────────────────────
 export interface CoreInputs {
@@ -75,6 +75,10 @@ export interface PitchDeckSlide {
 }
 
 export interface OutputData {
+    problem_statement?: string;
+    competitor_analysis?: string;
+    idea_validation?: string;
+    gtm_strategy?: string;
     validation?: ValidationOutput;
     market?: MarketData;
     competitors?: {
@@ -94,6 +98,13 @@ export interface OutputData {
     };
 }
 
+export interface ReviewStatus {
+    problem_statement_approved: boolean;
+    competitor_analysis_approved: boolean;
+    idea_validation_approved: boolean;
+    gtm_strategy_approved: boolean;
+}
+
 export interface KnowledgeGraph {
     core_inputs: CoreInputs;
     refinements: Refinements;
@@ -101,6 +112,7 @@ export interface KnowledgeGraph {
     market_data: MarketData;
     red_flags: RedFlag[];
     outputs: OutputData;
+    review_status: ReviewStatus;
 }
 
 // ─── Venture ─────────────────────────────────────────────────────
@@ -133,6 +145,12 @@ export function createEmptyKnowledgeGraph(): KnowledgeGraph {
         },
         red_flags: [],
         outputs: {},
+        review_status: {
+            problem_statement_approved: false,
+            competitor_analysis_approved: false,
+            idea_validation_approved: false,
+            gtm_strategy_approved: false,
+        },
     };
 }
 
